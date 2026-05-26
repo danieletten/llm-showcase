@@ -4,6 +4,13 @@ Interactieve demo geïnspireerd op [llmviz](https://sanand0.github.io/llmviz/). 
 hoe een LLM tekst token-voor-token genereert, met per token de probability en
 de top-5 alternatieven.
 
+Naast de standaard single-output flow heeft de app een **Context Compare Mode**:
+zet de toggle aan en de prompt wordt twee keer parallel uitgevoerd — één keer
+zonder context, één keer met de ingevulde context. Zo zie je direct hoe
+relevante context de zekerheid per token beïnvloedt. Een viertal voorbeeldkaarten
+(entropie, vuurtoren, koffieslogan, PowerShell refactor) vullen prompt + context
+in één klik.
+
 ## Lokaal draaien
 
 ```bash
@@ -37,8 +44,18 @@ dan draait de app op mock-data.
 
 Request:
 ```json
-{ "prompt": "string", "temperature": 0.7 }
+{ "prompt": "string", "temperature": 0.7, "context": "optionele string" }
 ```
+
+Server-side limieten (anders 400):
+
+- `prompt`: max 1000 tekens
+- `context`: max 2000 tekens
+- output: max 1000 tokens (`MAX_OUTPUT_TOKENS` in [app/api/generate-token-confidence/route.ts](app/api/generate-token-confidence/route.ts))
+
+Wanneer `context` aanwezig is, gebruikt de server een aparte system prompt die
+het model instrueert de context te gebruiken indien relevant; in dat geval
+wordt de user-message gestructureerd als `Context:\n…\n\nTaak:\n…`.
 
 Response:
 ```json
@@ -70,7 +87,11 @@ Response:
 - Geen persistente opslag, auth of analytics (MVP-scope).
 - De `TokenVisualizer`-component is bewust losgekoppeld van de API zodat hij
   later in een AI exam-trainer of leermodule kan worden hergebruikt — geef hem
-  enkel een `TokenInfo[]` mee.
+  enkel een `TokenInfo[]` mee. Hetzelfde geldt voor `ConfidenceOutput`, dat een
+  enkele response (loading/error/data) met legenda, metrics en debug-paneel
+  rendert en zowel in de single- als compare-flow wordt gebruikt.
+- Compare Mode doet twee parallelle API-calls via `Promise.allSettled`, zodat
+  een fout in één van de twee de andere niet meeneemt.
 
 ## Op Azure draaien (App Service, voor test/demo)
 
