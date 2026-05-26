@@ -13,6 +13,16 @@ export const runtime = "nodejs";
 // Aantal alternatieven dat we per token opvragen (min. 5 volgens spec).
 const TOP_LOGPROBS = 5;
 
+// Lage cap op output tokens: dit is een demo, niet een chat. Houd hem klein
+// voor snelheid en kostenbeheersing — alle voorbeeldprompts passen ruim
+// binnen 120 tokens.
+const MAX_OUTPUT_TOKENS = 120;
+
+// Inputlimieten zodat de demo-endpoint niet als gratis LLM-proxy misbruikt
+// kan worden. Server-side controle — afwijzen met 400 als overschreden.
+const MAX_PROMPT_CHARS = 1000;
+const MAX_CONTEXT_CHARS = 2000;
+
 // Azure OpenAI: 'model' veld op de request = de *deployment name*.
 const AZURE_ENDPOINT = process.env.AZURE_OPENAI_ENDPOINT;
 const AZURE_API_KEY = process.env.AZURE_OPENAI_API_KEY;
@@ -51,6 +61,9 @@ export async function POST(req: Request) {
   }
 
   const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
+  const rawContext =
+    typeof body?.context === "string" ? body.context.trim() : "";
+  const context = rawContext.length > 0 ? rawContext : undefined;
   const temperature =
     typeof body?.temperature === "number" && Number.isFinite(body.temperature)
       ? Math.min(Math.max(body.temperature, 0), 2)
@@ -59,6 +72,24 @@ export async function POST(req: Request) {
   if (!prompt) {
     return NextResponse.json<ApiErrorResponse>(
       { error: "Prompt mag niet leeg zijn." },
+      { status: 400 },
+    );
+  }
+
+  if (prompt.length > MAX_PROMPT_CHARS) {
+    return NextResponse.json<ApiErrorResponse>(
+      {
+        error: `Prompt is te lang (${prompt.length} tekens, max ${MAX_PROMPT_CHARS}).`,
+      },
+      { status: 400 },
+    );
+  }
+
+  if (context && context.length > MAX_CONTEXT_CHARS) {
+    return NextResponse.json<ApiErrorResponse>(
+      {
+        error: `Context is te lang (${context.length} tekens, max ${MAX_CONTEXT_CHARS}).`,
+      },
       { status: 400 },
     );
   }
@@ -85,16 +116,10 @@ export async function POST(req: Request) {
       // Op Azure is dit veld de deployment name.
       model: AZURE_DEPLOYMENT,
       temperature,
+      max_tokens: MAX_OUTPUT_TOKENS,
       logprobs: true,
       top_logprobs: TOP_LOGPROBS,
-      messages: [
-        {
-          role: "system",
-          content:
-            "Je bent een beknopte assistent. Geef korte, behulpzame antwoorden.",
-        },
-        { role: "user", content: prompt },
-      ],
+      messages: buildMessages(prompt, context),
     });
 
     const choice = completion.choices?.[0];
@@ -160,6 +185,37 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
+}
+
+/**
+ * Bouw de chat-messages. Zonder context: korte beknopt-assistent prompt.
+ * Met context: explicietere system-prompt + user-bericht in `Context: …
+ * \n\nTaak: …` formaat, zodat de demo het effect van context op
+ * token-probabilities goed kan laten zien.
+ */
+function buildMessages(prompt: string, context: string | undefined) {
+  if (!context) {
+    return [
+      {
+        role: "system" as const,
+        content:
+          "Je bent een beknopte assistent. Geef korte, behulpzame antwoorden.",
+      },
+      { role: "user" as const, content: prompt },
+    ];
+  }
+
+  return [
+    {
+      role: "system" as const,
+      content:
+        "Je bent een taalmodel dat helder, beknopt en volgens de gegeven context antwoordt. Gebruik de context alleen als die relevant is.",
+    },
+    {
+      role: "user" as const,
+      content: `Context:\n${context}\n\nTaak:\n${prompt}`,
+    },
+  ];
 }
 
 /**

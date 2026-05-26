@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import type { ConfidenceMetrics, TokenInfo } from "@/lib/types";
 
 /**
  * Mapt een probability (0..1) naar een rustige inline-stijl voor de
@@ -38,4 +39,41 @@ export function getConfidenceStyle(probability: number): CSSProperties {
 
 export function formatPercent(p: number): string {
   return `${(p * 100).toFixed(1)}%`;
+}
+
+/**
+ * Bereken de confidence-metrics over een set tokens. Geeft veilige defaults
+ * terug voor een lege lijst zodat de UI niet hoeft te checken.
+ */
+export function computeConfidenceMetrics(
+  tokens: readonly TokenInfo[],
+): ConfidenceMetrics {
+  if (tokens.length === 0) {
+    return {
+      tokenCount: 0,
+      averageProbability: 0,
+      minProbability: 0,
+      lowConfidenceTokenCount: 0,
+      veryLowConfidenceTokenCount: 0,
+    };
+  }
+
+  let sum = 0;
+  let min = Infinity;
+  let low = 0;
+  let veryLow = 0;
+  for (const t of tokens) {
+    sum += t.probability;
+    if (t.probability < min) min = t.probability;
+    if (t.probability < 0.5) low++;
+    if (t.probability < 0.2) veryLow++;
+  }
+
+  return {
+    tokenCount: tokens.length,
+    averageProbability: sum / tokens.length,
+    minProbability: min,
+    lowConfidenceTokenCount: low,
+    veryLowConfidenceTokenCount: veryLow,
+  };
 }

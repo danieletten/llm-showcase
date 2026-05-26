@@ -35,6 +35,12 @@ export interface WordGroup {
 
 export interface GenerateTokenConfidenceRequest {
   prompt: string;
+  /**
+   * Optionele achtergrondinformatie / constraints. Wordt server-side in een
+   * apart system+user-bericht meegestuurd zodat de demo het verschil tussen
+   * "zonder context" en "met context" kan laten zien.
+   */
+  context?: string;
   temperature: number;
 }
 
@@ -44,6 +50,21 @@ export interface DebugStats {
   tokensWithAlternatives: number;
   minProbability: number;
   maxProbability: number;
+}
+
+/**
+ * Samenvattende confidence-statistieken die per output worden getoond.
+ * Bewust losgekoppeld van `DebugStats` — `ConfidenceMetrics` is UI-facing,
+ * `DebugStats` is voor het techniek-paneel.
+ */
+export interface ConfidenceMetrics {
+  tokenCount: number;
+  averageProbability: number;
+  minProbability: number;
+  /** Aantal tokens met probability < 0.50 */
+  lowConfidenceTokenCount: number;
+  /** Aantal tokens met probability < 0.20 */
+  veryLowConfidenceTokenCount: number;
 }
 
 export type MockReason = "missing-credentials" | "llm-error-dev-fallback";
