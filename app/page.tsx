@@ -11,7 +11,34 @@ type ExampleCard = {
   title: string;
   prompt: string;
   context: string;
+  /** Optionele korte toelichting onder de kaart (bv. demo-pointer). */
+  note?: string;
+  /** Zet compare mode automatisch aan bij klikken. */
+  forceCompareMode?: boolean;
 };
+
+const PS_REFACTOR_PROMPT = `Refactor dit PowerShell script:
+
+$subs = Get-AzSubscription
+foreach ($s in $subs) {
+  Set-AzContext -SubscriptionId $s.Id
+  $vms = Get-AzVM
+  foreach ($vm in $vms) {
+    Write-Host $vm.Name
+    if ($vm.Tags["Owner"] -eq $null) {
+      Write-Host "No owner tag"
+    }
+  }
+}`;
+
+const PS_REFACTOR_CONTEXT = [
+  "Het script wordt gebruikt door cloud engineers om Azure resources te controleren.",
+  "Refactor met focus op leesbaarheid, foutafhandeling, veilige logging en herbruikbaarheid.",
+  "Behoud hetzelfde gedrag.",
+  "Gebruik duidelijke functienamen, comment-based help en Write-Verbose in plaats van Write-Host.",
+  "Maak geen externe dependencies aan.",
+  "Zorg dat het resultaat geschikt blijft voor PowerShell 7 en de Az PowerShell module.",
+].join("\n");
 
 const EXAMPLE_CARDS: readonly ExampleCard[] = [
   {
@@ -34,6 +61,14 @@ const EXAMPLE_CARDS: readonly ExampleCard[] = [
     prompt: "Schrijf een korte reclameslogan voor een nieuwe koffiezaak.",
     context:
       "De koffiezaak heet Morgenlicht. De zaak zit naast een treinstation. De doelgroep is forenzen. De belofte is snelle, goede koffie voor onderweg. De toon is warm en optimistisch. Maximaal 8 woorden.",
+  },
+  {
+    id: "ps-refactor",
+    title: "PowerShell refactor",
+    prompt: PS_REFACTOR_PROMPT,
+    context: PS_REFACTOR_CONTEXT,
+    note: "Het script zelf is context, maar het vertelt nog niet wat goed refactoren betekent. Met doelcriteria zoals leesbaarheid, foutafhandeling en logging wordt de opdracht veel specifieker.",
+    forceCompareMode: true,
   },
 ];
 
@@ -72,6 +107,9 @@ export default function HomePage() {
   );
   const [context, setContext] = useState<string>("");
   const [temperature, setTemperature] = useState<number>(0.7);
+  // Houd bij of de gebruiker de slider zelf heeft aangeraakt. Voorbeeldkaarten
+  // mogen alleen terugvallen op een aanbevolen temperatuur als dat niet zo is.
+  const [temperatureTouched, setTemperatureTouched] = useState<boolean>(false);
   const [compareMode, setCompareMode] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<ViewMode>("words");
 
@@ -90,7 +128,11 @@ export default function HomePage() {
   function applyExample(card: ExampleCard) {
     setPrompt(card.prompt);
     setContext(card.context);
-    // Compare-mode bewust niet hier aanzetten — laat dat aan de gebruiker.
+    if (card.forceCompareMode) {
+      setCompareMode(true);
+      // Aanbevolen demowaarde, maar respecteer een eerdere keuze van de gebruiker.
+      if (!temperatureTouched) setTemperature(0.7);
+    }
     setGlobalError(null);
   }
 
@@ -186,8 +228,13 @@ export default function HomePage() {
               >
                 <div className="font-semibold text-slate-800">{card.title}</div>
                 <div className="mt-1 text-slate-500">
-                  Prompt + context worden ingevuld.
+                  {card.note ?? "Prompt + context worden ingevuld."}
                 </div>
+                {card.forceCompareMode && (
+                  <div className="mt-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">
+                    Zet compare mode aan
+                  </div>
+                )}
               </button>
             ))}
           </div>
@@ -239,7 +286,10 @@ export default function HomePage() {
             max={2}
             step={0.05}
             value={temperature}
-            onChange={(e) => setTemperature(parseFloat(e.target.value))}
+            onChange={(e) => {
+              setTemperature(parseFloat(e.target.value));
+              setTemperatureTouched(true);
+            }}
             className="w-full"
           />
         </label>
