@@ -11,6 +11,8 @@ relevante context de zekerheid per token beïnvloedt. Een viertal voorbeeldkaart
 (entropie, vuurtoren, koffieslogan, PowerShell refactor) vullen prompt + context
 in één klik.
 
+![Controls met voorbeeldkaarten en compare-toggle](docs/screenshot-controls.png)
+
 ## Lokaal draaien
 
 ```bash
