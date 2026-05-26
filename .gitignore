@@ -1,0 +1,10 @@
+node_modules
+.next
+.env
+.env.local
+*.log
+.DS_Store
+# TypeScript incremental build cache
+*.tsbuildinfo
+# VS Code workspace files (laat per-user instellingen lokaal)
+.vscode/
