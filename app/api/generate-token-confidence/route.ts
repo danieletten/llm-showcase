@@ -13,10 +13,10 @@ export const runtime = "nodejs";
 // Aantal alternatieven dat we per token opvragen (min. 5 volgens spec).
 const TOP_LOGPROBS = 5;
 
-// Lage cap op output tokens: dit is een demo, niet een chat. Houd hem klein
-// voor snelheid en kostenbeheersing — alle voorbeeldprompts passen ruim
-// binnen 120 tokens.
-const MAX_OUTPUT_TOKENS = 120;
+// Cap op output tokens: ruim genoeg voor langere demo-uitvoer zoals een
+// gerefactorde PowerShell-snippet, maar nog steeds bovengrens tegen runaway
+// generaties.
+const MAX_OUTPUT_TOKENS = 1000;
 
 // Inputlimieten zodat de demo-endpoint niet als gratis LLM-proxy misbruikt
 // kan worden. Server-side controle — afwijzen met 400 als overschreden.
