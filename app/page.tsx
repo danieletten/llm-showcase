@@ -17,7 +17,7 @@ type ViewMode = "words" | "tokens";
 const EXAMPLE_PROMPTS: readonly string[] = [
   "Leg entropie uit in één zin.",
   "Schrijf één mysterieuze zin over een oude vuurtoren.",
-  "Schrijf een korte reclameslogan voor een tuin vol inheemse planten.",
+  "Schrijf een korte reclameslogan voor een nieuwe koffiezaak.",
 ];
 
 export default function HomePage() {
